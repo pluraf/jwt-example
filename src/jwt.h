@@ -30,8 +30,8 @@ IN THE SOFTWARE.
 #include "crypto/ecc-light-certificate/ecc.h"
 
 
-char * createJwt(char *project_id, long long int time, NN_DIGIT * priv_key, int jwt_exp_secs);
+char * jwt_create(char *project_id, long long int time, NN_DIGIT * priv_key, int jwt_exp_secs);
 
-int verifyJwt(char * jwt,  point_t * pub_key);
+int jwt_verify(char * jwt,  point_t * pub_key);
 
 #endif

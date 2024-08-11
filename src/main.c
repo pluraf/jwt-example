@@ -143,8 +143,8 @@ int main() {
     ecc_init();
 
     NN_DIGIT * private_key = read_private_key("../bits/private_key.pem");
-    char * jwt = createJwt(project_id, time, private_key, jwt_exp_secs);
+    char * jwt = jwt_create(project_id, time, private_key, jwt_exp_secs);
     printf("JWT: %s\n", jwt);
     point_t * public_key = read_public_key("../bits/public_key.pem");
-    printf("verification: %d\n", verifyJwt(jwt, public_key));
+    printf("verification: %d\n", jwt_verify(jwt, public_key));
 }
