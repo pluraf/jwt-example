@@ -35,16 +35,25 @@ IN THE SOFTWARE.
 #include "jwt.h"
 
 
-point_t * read_public_key(const char *pem_file) {
-    FILE *file = fopen(pem_file, "r");
-    if (! file) {
+point_t * read_public_key(const char *pem_file)
+{
+    FILE *fp = fopen(pem_file, "r");
+    if (! fp) {
         perror("Unable to open PEM file");
         return NULL;
     }
 
-    // Read the EC public key from the PEM file
-    EVP_PKEY *pkey = PEM_read_PUBKEY(file, NULL, NULL, NULL);
-    fclose(file);
+    fseek(fp, 0, SEEK_END);
+    size_t file_size = ftell(fp);
+    rewind(fp);
+
+    char *buffer = malloc(file_size + 1);
+    size_t bytes_read = fread(buffer, 1, file_size, fp);
+    fclose(fp);
+    buffer[file_size] = '\0';
+
+    BIO *bio = BIO_new_mem_buf(buffer, -1);
+    EVP_PKEY *pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
 
     if (! pkey) {
         fprintf(stderr, "Error reading public key from PEM file.\n");
@@ -94,28 +103,41 @@ point_t * read_public_key(const char *pem_file) {
     BN_free(y);
     EC_KEY_free(ec_key);
     EVP_PKEY_free(pkey);
+    BIO_free(bio);
+    free(buffer);
 
     return key;
 }
 
 
-NN_DIGIT * read_private_key(const char *filename) {
+NN_DIGIT * read_private_key(const char *filename)
+{
     FILE *fp = fopen(filename, "r");
-
     if (fp == NULL) {
         perror("Unable to open PEM file");
         return NULL;
     }
 
-    // Load the private key from the PEM file
-    EC_KEY * ec_key =  PEM_read_ECPrivateKey(fp, NULL, NULL, NULL);
-    fclose(fp);
+    fseek(fp, 0, SEEK_END);
+    size_t file_size = ftell(fp);
+    rewind(fp);
 
-    if (ec_key == NULL) {
+    char *buffer = malloc(file_size + 1);
+    size_t bytes_read = fread(buffer, 1, file_size, fp);
+    fclose(fp);
+    buffer[file_size] = '\0';
+
+    BIO *bio = BIO_new_mem_buf(buffer, -1);
+
+    // Load the private key from the PEM file
+    EVP_PKEY * pkey =  PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+    if (pkey == NULL) {
         fprintf(stderr, "Error reading EC private key from PEM file\n");
         ERR_print_errors_fp(stderr);
         return NULL;
     }
+
+    EC_KEY *ec_key = EVP_PKEY_get1_EC_KEY(pkey);
 
     const BIGNUM *priv_key = EC_KEY_get0_private_key(ec_key);
     if (priv_key == NULL) {
@@ -131,6 +153,8 @@ NN_DIGIT * read_private_key(const char *filename) {
     // Free memory
     free(priv_key_bytes);
     EC_KEY_free(ec_key);
+    BIO_free(bio);
+    free(buffer);
 
     return key;
 }
